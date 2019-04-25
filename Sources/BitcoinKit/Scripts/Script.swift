@@ -153,7 +153,7 @@ public class Script {
             self.init()
             try append(mOpcode)
             for pubkey in publicKeys {
-                try appendData(pubkey.raw)
+                try appendData(pubkey.data)
             }
             try append(nOpcode)
             try append(.OP_CHECKMULTISIG)
@@ -252,6 +252,21 @@ public class Script {
         }
 
         return requirements.nSigRequired > 0
+    }
+
+    public var isStandardOpReturnScript: Bool {
+        guard chunks.count == 2 else {
+            return false
+        }
+        return opcode(at: 0) == .OP_RETURN
+            && pushedData(at: 1) != nil
+    }
+
+    public func standardOpReturnData() -> Data? {
+        guard isStandardOpReturnScript else {
+            return nil
+        }
+        return pushedData(at: 1)
     }
 
     // If typical multisig tx is detected, sets requirements:
@@ -465,8 +480,8 @@ extension Script {
 
     public static func buildPublicKeyUnlockingScript(signature: Data, pubkey: PublicKey, hashType: SighashType) -> Data {
         var data: Data = Data([UInt8(signature.count + 1)]) + signature + UInt8(hashType)
-        data += VarInt(pubkey.raw.count).serialized()
-        data += pubkey.raw
+        data += VarInt(pubkey.data.count).serialized()
+        data += pubkey.data
         return data
     }
 

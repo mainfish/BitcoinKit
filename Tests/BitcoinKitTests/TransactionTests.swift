@@ -36,15 +36,15 @@ class TransactionTests: XCTestCase {
         let index: UInt32 = 1
         let outpoint = TransactionOutPoint(hash: hash, index: index)
 
-        let balance: Int64 = 169012961
-        let amount: Int64  =  50000000
-        let fee: Int64     =  10000000
+        let balance: UInt64 = 169012961
+        let amount: UInt64  =  50000000
+        let fee: UInt64     =  10000000
         let toAddress = "mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB" // https://testnet.coinfaucet.eu/en/
 
         let privateKey = try! PrivateKey(wif: "92pMamV6jNyEq9pDpY4f6nBy9KpV2cfJT4L5zDUYiGqyQHJfF1K")
 
         let fromPublicKey = privateKey.publicKey()
-        let fromPubKeyHash = Crypto.sha256ripemd160(fromPublicKey.raw)
+        let fromPubKeyHash = Crypto.sha256ripemd160(fromPublicKey.data)
         let toPubKeyHash = Base58.decode(toAddress)!.dropFirst().dropLast(4)
 
         let lockingScript1 = Script.buildPublicKeyHashOut(pubKeyHash: toPubKeyHash)
@@ -71,8 +71,8 @@ class TransactionTests: XCTestCase {
 
         // scriptSig: <sig> <pubKey>
         var unlockingScript: Data = Data([UInt8(signature.count + 1)]) + signature + UInt8(hashType)
-        unlockingScript += UInt8(fromPublicKey.raw.count)
-        unlockingScript += fromPublicKey.raw
+        unlockingScript += UInt8(fromPublicKey.data.count)
+        unlockingScript += fromPublicKey.data
         let input = TransactionInput(previousOutput: outpoint, signatureScript: unlockingScript, sequence: UInt32.max)
         let transaction = Transaction(version: 1, inputs: [input], outputs: [sending, payback], lockTime: 0)
 
@@ -100,5 +100,11 @@ class TransactionTests: XCTestCase {
         let signedTx = signTx(unsignedTx: unsignedTx, keys: [utxoKey])
         XCTAssertEqual(signedTx.txID, "96ee20002b34e468f9d3c5ee54f6a8ddaa61c118889c4f35395c2cd93ba5bbb4")
         XCTAssertEqual(signedTx.serialized().hex, "0100000001e28c2b955293159898e34c6840d99bf4d390e2ee1c6f606939f18ee1e2000d05020000006b483045022100b70d158b43cbcded60e6977e93f9a84966bc0cec6f2dfd1463d1223a90563f0d02207548d081069de570a494d0967ba388ff02641d91cadb060587ead95a98d4e3534121038eab72ec78e639d02758e7860cdec018b49498c307791f785aa3019622f4ea5bffffffff0258020000000000001976a914769bdff96a02f9135a1d19b749db6a78fe07dc9088ace5100000000000001976a9149e089b6889e032d46e3b915a3392edfd616fb1c488ac00000000")
+    }
+
+    func testIsCoinbase() {
+        let data = Data(hex: "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff025151ffffffff010000000000000000015100000000")!
+        let tx = Transaction.deserialize(data)
+        XCTAssert(tx.isCoinbase())
     }
 }
